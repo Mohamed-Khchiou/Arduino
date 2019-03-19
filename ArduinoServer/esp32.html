@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="esp32.css">
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+    <script>
+        var ledStatus = "OFF";
+        var ipAddress;
+        var macAddress;
+
+        $(function() {
+            // if user is running mozilla then use it's built-in WebSocket
+            window.WebSocket = window.WebSocket || window.MozWebSocket;
+
+            var connection = new WebSocket('ws://127.0.0.1:8080');
+
+            connection.onopen = function () {
+                // connection is opened and ready to use
+                console.log("Web connection");
+                connection.send('Web');
+                connection.send('0');
+                connection.send('1');
+            };
+
+            connection.onerror = function (error) {
+                // an error occurred when sending/receiving data
+                console.log("Error");
+            };
+
+            connection.onmessage = function (message) {
+                // try to decode json (I assume that each message
+                // from server is json)
+                console.log(message.data);
+                var value = message.data.split('/');
+                switch (value[0]) {
+                    case 'ip':
+                        $('#ip_address').html(value[1]);
+                        ipAddress = value[1];
+                        break;
+                    case 'mac':
+                        $('#mac_address').html(value[1]);
+                        macAddress = value[1];
+                        break;
+                    case 'led':
+                        ledStatus = value[1];
+                        $('#ledStatus').html(ledStatus);
+                        break;
+                    case 'temp':
+                        $('#temp').html(value[1]);
+                        break;
+                    case 'light':
+                        $('#light').html(value[1]);
+                        break;
+                    default:
+                        console.log('Message inconnu');
+                }
+            };
+
+            $('#lightButton').click(function () {
+                connection.send('2');
+            });
+
+            setInterval(function() {
+                //Si l'IP n'a pas été recuperée, on effectue une nouvelle demande
+                if(!!!ipAddress)
+                    connection.send('0');
+                //Si l'adresse mac n'a pas été recuperée, on effectue une nouvelle demande
+                if(!!!macAddress)
+                    connection.send('1');
+                //Get temp and light every 5 sec
+                connection.send('3');
+                connection.send('4');
+            }, 5000);
+
+        });
+    </script>
+
+</head>
+<body>
+<h1>ESP32 Client Server</h1>
+<p>IP address: <span id="ip_address"></span></p>
+<p>MAC address: <span id="mac_address"></span></p>
+
+<table>
+    <tr>
+        <th>Composant</th>
+        <th>GPIO</th>
+        <th>Value</th>
+        <th>Action</th>
+    </tr>
+    <tbody>
+    <tr>
+        <td>LED</td>
+        <td>19</td>
+        <td id="ledStatus">OFF</td>
+        <td><button id="lightButton">On/Off</button></td>
+    </tr>
+    <tr>
+        <td>Temp Sensor</td>
+        <td>23</td>
+        <td id="temp">0</td>
+        <td>No action</td>
+    </tr>
+    <tr>
+        <td>Light Sensor</td>
+        <td>23</td>
+        <td id="light">0</td>
+        <td>No action</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
